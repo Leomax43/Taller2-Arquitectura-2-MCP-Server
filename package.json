@@ -1,0 +1,40 @@
+{
+  "name": "taller2-arquitectura-2-mcp-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Leomax43/Taller2-Arquitectura-2-MCP-Server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Leomax43/Taller2-Arquitectura-2-MCP-Server/issues"
+  },
+  "homepage": "https://github.com/Leomax43/Taller2-Arquitectura-2-MCP-Server#readme",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@grpc/grpc-js": "^1.14.7",
+    "@grpc/proto-loader": "^0.8.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
