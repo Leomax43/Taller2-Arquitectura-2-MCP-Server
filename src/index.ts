@@ -61,41 +61,26 @@ const grpcClient = new simulatorProto.SimulatorService(
 );
 
 // Función que envuelve la llamada gRPC en una Promesa
-const simularRendimientoGrpc = (args: any): Promise<string> => {
+function simularRendimientoGrpc(args: any, userId: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        console.log(`[gRPC Call] Enviando datos a Java en puerto 9090...`);
-        grpcClient.SimularRendimiento(args, (error: any, response: any) => {
+        // Agregamos el user_id al objeto que viaja a Java
+        const grpcPayload = {
+            ...args,
+            user_id: userId
+        };
+
+        grpcClient.SimularRendimiento(grpcPayload, (error: any, response: any) => {
             if (error) {
-                console.error("[gRPC Error]", error);
-                reject("Error al comunicarse con el motor de simulación.");
+                console.error("Error en gRPC:", error);
+                reject(error);
             } else {
-                console.log(`[gRPC Response] Respuesta recibida de Java:`, response);
                 resolve(`Resultado: Consumo=${response.consumo_total_watts}W, Cuello=${response.cuello_botella_porcentaje}%, Estado=${response.estado}, Motivo=${response.motivo}`);
             }
         });
     });
-};
+}
 
-// ==========================================
-// DECLARACIÓN DE HERRAMIENTA MCP
-// ==========================================
-mcpServer.tool(
-  "simular_rendimiento_hardwareguru",
-  "Calcula el consumo total en Watts y el cuello de botella (%) entre CPU y GPU.",
-  {
-    cpu_tdp_watts: z.number(),
-    cpu_benchmark_score: z.number(),
-    gpu_tdp_watts: z.number(),
-    gpu_benchmark_score: z.number(),
-    resolucion: z.enum(["1080p", "1440p"]),
-    psu_watts: z.number()
-  },
-  async (args) => {
-    // Reemplazamos la matemática local por la llamada gRPC real
-    const textoResultado = await simularRendimientoGrpc(args);
-    return { content: [{ type: "text", text: textoResultado }] };
-  }
-);
+
 
 
 
@@ -107,7 +92,13 @@ app.post('/chat', async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "El prompt es requerido" });
 
-        console.log(`\n--- NUEVA PETICIÓN RECIBIDA ---`);
+        // 1. Capturamos el ID del usuario desde los headers (lo enviará el API Gateway)
+        const userId = req.headers['x-user-id'];
+        if (!userId) return res.status(401).json({ error: "No autorizado. Falta el header x-user-id" });
+
+
+        
+        console.log(`\n--- NUEVA PETICIÓN RECIBIDA de User ID: ${userId} ---`);
         console.log(`[Paso 1] Analizando la pregunta del usuario: "${prompt}"...`);
 
         // Llamada 1: Solo para extraer las variables (Sin mantener sesión viva)
@@ -142,7 +133,7 @@ app.post('/chat', async (req, res) => {
                 
                 // Ejecutamos la petición gRPC
                 console.log(`[Paso 3] Iniciando comunicación gRPC con Repositorio 1 (Java)...`);
-                const toolResultText = await simularRendimientoGrpc(call.args);
+                const toolResultText = await simularRendimientoGrpc(call.args, userId as string);
                 console.log(`[Paso 4] gRPC finalizado con éxito. Resultado: ${toolResultText}`);
                 
                 // Llamada 2: Nueva petición limpia a Gemini solo para redactar, uniendo pregunta y resultado.
