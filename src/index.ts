@@ -21,12 +21,12 @@ const CATALOGO_GRPC_URL = process.env.CATALOGO_GRPC_URL || 'localhost:50051';
 app.use(cors());
 app.use(express.json());
 
-if (!process.env.GEMINI_API_KEY) {
+if (!process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'test') {
     console.error("CRÍTICO: No se encontró GEMINI_API_KEY en el archivo .env");
     process.exit(1);
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'test-key');
 
 // ==========================================
 // 1. CLIENTES gRPC (SIMULADOR + CATÁLOGO)
@@ -361,3 +361,13 @@ app.listen(port, () => {
     console.log(`   -> Simulador gRPC: ${SIMULADOR_GRPC_URL} | REST: ${SIMULADOR_REST_URL}`);
     console.log(`   -> Catálogo gRPC:  ${CATALOGO_GRPC_URL}`);
 });
+
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(port, () => {
+        console.log(`🧠 HardwareGuru MCP Server corriendo en http://localhost:${port}`);
+        console.log(`   -> Simulador gRPC: ${SIMULADOR_GRPC_URL} | REST: ${SIMULADOR_REST_URL}`);
+        console.log(`   -> Catálogo gRPC:  ${CATALOGO_GRPC_URL}`);
+    });
+}
+
+export { app, extraerBenchmarkScore, ejecutarTool, simulatorClient, catalogoClient, model };

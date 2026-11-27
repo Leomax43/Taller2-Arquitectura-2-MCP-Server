@@ -17,3 +17,5 @@ Thumbs.db
 # Configuraciones locales de editores
 .vscode/
 .idea/
+
+coverage/
