@@ -290,7 +290,7 @@ async function ejecutarTool(name: string, args: any, userId: string): Promise<an
 // 4. MODELO CON SYSTEM INSTRUCTION + TOOLS
 // ==========================================
 const model = genAI.getGenerativeModel({
-    model: "gemini-3-flash-preview",
+    model: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
     systemInstruction: `Eres Guru, el asistente experto en hardware de HardwareGuru.
 Reglas obligatorias:
 1. Cuando el usuario pida armar una PC, buscar piezas o preguntar por compatibilidad, usa primero 'listar_componentes' para trabajar con piezas REALES del catálogo.
