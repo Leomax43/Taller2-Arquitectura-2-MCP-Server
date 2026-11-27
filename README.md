@@ -1,92 +1,171 @@
-# HardwareGuru - MCP Server (Inteligencia Artificial)
+# HardwareGuru - MCP Server (Agente de Inteligencia Artificial)
 
-Microservicio intermedio de **HardwareGuru** (Repositorio 2 de 7). Este servicio actúa como el "cerebro" de la plataforma, utilizando el **Model Context Protocol (MCP)** y la API de **Google Gemini** para interpretar las solicitudes en lenguaje natural de los usuarios, extraer parámetros técnicos y orquestar llamadas a otros microservicios.
+Microservicio de IA de **HardwareGuru** (Repositorio 2). Actúa como el asistente experto (**Guru**) de la plataforma utilizando **Google Gemini** con *Function Calling* (inspirado en herramientas MCP) para interpretar consultas en lenguaje natural, consultar el catálogo oficial, verificar compatibilidad, ejecutar simulaciones matemáticas y gestionar el historial de builds de cada usuario.
 
-## 🚀 Arquitectura y Flujo
+> Proyecto universitario · Curso de Microservicios · Repo 2 de 7
 
-Este servicio opera como un puente entre el usuario (o el API Gateway) y el motor matemático (Java):
-1. **Recibe** un prompt en lenguaje natural a través de un endpoint REST (`POST /chat`).
-2. **Analiza** el prompt usando el modelo `gemini-3.8-flash`.
-3. **Extrae** variables técnicas (TDP, puntajes PassMark, resolución) si detecta que el usuario necesita una simulación de rendimiento.
-4. **Consulta** al **Repositorio 1 (Simulador)** mediante **gRPC** en el puerto `9090` para realizar los cálculos matemáticos exactos (consumo y cuello de botella).
-5. **Redacta** una respuesta final amigable y la devuelve en formato JSON.
+---
 
-## 🛠️ Tecnologías
+## 1. Arquitectura y Flujo Agéntico
 
-* **Entorno:** Node.js + TypeScript (ESM Modules)
-* **Framework Web:** Express.js
-* **Inteligencia Artificial:** Google Generative AI SDK (`gemini-3.8-flash`)
-* **Integración de Herramientas:** Model Context Protocol (MCP) SDK + Zod
-* **Comunicación Interna:** gRPC (`@grpc/grpc-js`, `@grpc/proto-loader`)
+El servicio recibe peticiones desde el **API Gateway (NestJS)** en `POST /chat` y ejecuta un bucle agéntico (hasta **8 iteraciones** encadenadas) orquestando llamadas internas a otros microservicios:
 
-## 📋 Requisitos Previos
+1. **Autenticación y Aislamiento:** Exige el header `x-user-id` (inyectado por el API Gateway tras validar el JWT) para aislar el historial y las acciones de cada usuario. La `GEMINI_API_KEY` reside exclusivamente en el servidor y nunca se expone al cliente.
+2. **Razonamiento con Gemini:** Envía el prompt del usuario junto con las instrucciones del sistema y la declaración de **7 herramientas**.
+3. **Orquestación Interna:**
+   * **Catálogo (Go, gRPC `:50051`):** Búsqueda de piezas, obtención de especificaciones/benchmarks y verificación de compatibilidad técnica.
+   * **Simulador (Java, gRPC `:9090` y REST `:8081`):** Cálculo de consumo energético y cuello de botella, listado y guardado de builds.
+4. **Respuesta Final:** Redacta una recomendación clara en español basada únicamente en datos reales de los microservicios y la devuelve en JSON.
 
-Antes de ejecutar este proyecto, asegúrate de tener:
-* **Node.js** (v18 o superior).
-* Una **API Key de Google Gemini** (Google AI Studio).
-* El **Repositorio 1 (Simulador Java)** ejecutándose localmente en el puerto `9090`.
+---
 
-## ⚙️ Instalación y Configuración
+## 2. Herramientas (Tools) Disponibles para el Agente
 
-1. **Clonar el repositorio y entrar a la carpeta:**
-   
-```bash
-   git clone <tu-url-del-repo-2>
-   cd Taller2-Arquitectura-2-MCP-Server
+| Herramienta | Microservicio Destino | Protocolo | Descripción |
+| :--- | :--- | :---: | :--- |
+| `listar_componentes` | Catálogo (`:50051`) | gRPC | Lista componentes oficiales filtrando por `tipo` (`cpu`, `placa`, `ram`, `gpu`, `fuente`) y/o texto de búsqueda. |
+| `obtener_specs_componente` | Catálogo (`:50051`) | gRPC | Obtiene especificaciones detalladas y `benchmarks_json` de una pieza por su ID. |
+| `verificar_compatibilidad` | Catálogo (`:50051`) | gRPC | Valida las 4 reglas técnicas (socket, tipo de RAM, ranuras de RAM y potencia de fuente). |
+| `simular_build_por_ids` | Catálogo (`:50051`) + Simulador (`:9090`) | gRPC | Resuelve TDP, fuente y puntajes reales desde el catálogo y ejecuta `SimularRendimiento`. |
+| `simular_rendimiento_manual` | Simulador (`:9090`) | gRPC | Respaldo para simular piezas fuera del catálogo usando TDP y benchmarks estimados. |
+| `listar_mis_builds` | Simulador (`:8081`) | REST | Consulta el historial de builds guardadas del usuario autenticado (`x-user-id`). |
+| `guardar_build` | Simulador (`:8081`) | REST | Guarda una build armada y simulada en el historial del usuario cuando este lo solicita. |
 
+---
 
+## 3. Tecnologías y Requisitos Previos
 
+* **Entorno:** Node.js (v20+) + TypeScript (ES Modules)
+* **Framework Web:** Express.js 5 + CORS
+* **Inteligencia Artificial:** `@google/generative-ai` (`GEMINI_MODEL`, por defecto `gemini-3-flash-preview`)
+* **Comunicación Interna:** gRPC (`@grpc/grpc-js`, `@grpc/proto-loader`) y HTTP (`fetch`)
+* **Testing y Cobertura:** Vitest + Supertest + `@vitest/coverage-v8`
+* **Contenedores y CI/CD:** Docker (multi-stage) y GitHub Actions
 
-Instalar las dependencias:
+---
 
-Bash
+## 4. Instalación y Configuración
+
+1. **Clonar el repositorio e instalar dependencias:**
+   ```bash
+   git clone https://github.com/Leomax43/Taller2-Arquitectura-2-MCP-Server.git
+   cd "Taller2-Arquitectura-2-MCP Server"
    npm install
-   
-Configurar variables de entorno:
-Crea un archivo .env en la raíz del proyecto y agrega tu clave de Gemini:
+   ```
 
-Fragmento de código
-   GEMINI_API_KEY=tu_api_key_aqui
-   PORT=3000
-   
-▶️ Ejecución
-Para iniciar el servidor en modo desarrollo (con recarga automática gracias a Nodemon y TSX):
+2. **Configurar variables de entorno:**
+   Copia `.env.example` a `.env` en la raíz del proyecto y completa tu clave de Google AI Studio:
+   ```env
+   PORT=3001
+   GEMINI_API_KEY=tu_api_key_de_gemini
+   GEMINI_MODEL=gemini-3-flash-preview
+   SIMULADOR_GRPC_URL=localhost:9090
+   SIMULADOR_REST_URL=http://localhost:8081
+   CATALOGO_GRPC_URL=localhost:50051
+   ```
 
-Bash
-npm run dev
-Verás en la consola que el servidor se levanta en el puerto 3000 (o el definido en tu .env).
+3. **Iniciar el servidor en desarrollo:**
+   ```bash
+   npm run dev
+   ```
+   El servicio quedará escuchando en **`http://localhost:3001`**.
 
-🌐 Endpoints y Uso
-El servicio expone un único endpoint REST principal:
+---
 
-POST /chat
-Recibe la consulta del usuario y devuelve el análisis de la IA.
+## 5. Contrato de la API REST
 
-Body de la petición (JSON):
+### `POST /chat`
+Recibe el mensaje del usuario y retorna la respuesta procesada por el agente.
 
-JSON
-{
-  "prompt": "Simula el rendimiento para un PC 1080p con fuente de 500W. La CPU consume 65W (score 5000) y la GPU consume 200W (score 20000)."
-}
-Ejemplo de llamada con cURL:
+* **Headers obligatorios:**
+  * `Content-Type: application/json`
+  * `x-user-id: <id_del_usuario>`
+* **Body (JSON):**
+  ```json
+  {
+    "prompt": "Ármame una PC gamer para 1440p usando piezas del catálogo y verifica compatibilidad."
+  }
+  ```
+* **Ejemplo con `curl`:**
+  ```bash
+  curl -X POST http://localhost:3001/chat \
+    -H "Content-Type: application/json" \
+    -H "x-user-id: 3" \
+    -d "{\"prompt\":\"¿Qué builds tengo guardadas?\"}"
+  ```
+* **Respuesta Exitosa (`200 OK`):**
+  ```json
+  {
+    "respuesta": "Tienes 1 build guardada en tu historial..."
+  }
+  ```
+* **Errores:**
+  * `400 Bad Request`: Falta el campo `prompt`.
+  * `401 Unauthorized`: Falta el header `x-user-id`.
+  * `500 Internal Server Error`: Error inesperado al comunicarse con Gemini.
 
-DOS
-curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d "{\"prompt\":\"Simula el rendimiento para un PC 1080p con fuente de 500W. La CPU consume 65W (score 5000) y la GPU consume 200W (score 20000).\"}"
-Ejemplo de respuesta (JSON):
+---
 
-JSON
-{
-  "respuesta": "¡Hola! Hemos realizado la simulación para tu configuración a 1080p con fuente de 500W y aquí tienes los resultados obtenidos:\n\n* **Consumo total estimado:** 378W\n* **Cuello de botella:** 75%\n* **Estado:** En riesgo..."
-}
-📁 Estructura del Proyecto
-Plaintext
-Taller2-Arquitectura-2-MCP-Server/
+## 6. Tests, Cobertura, Docker y CI/CD
+
+### Pruebas Unitarias y de Integración (Vitest + Supertest)
+La suite de pruebas (`tests/index.test.ts`) valida el parser de benchmarks (`extraerBenchmarkScore`), las 7 herramientas del agente (`ejecutarTool`), el manejo defensivo de errores y el bucle agéntico de `POST /chat` mockeando gRPC, `fetch` y Gemini sin consumir cuota real de la API:
+
+```bash
+# Ejecutar tests
+npm test
+
+# Ejecutar tests con reporte de cobertura
+npm run test:coverage
+```
+
+* **Cobertura actual:** **92.72%** en statements, **94.11%** en líneas y **73.75%** en ramas (superando el umbral mínimo del 60%).
+* **Reporte HTML:** Se genera localmente en `coverage/index.html` (ignorado en Git).
+
+### Construcción de Imagen Docker
+El `Dockerfile` utiliza un build *multi-stage* sobre `node:20-alpine` que compila TypeScript, copia los contratos `.proto` a `dist/proto` y genera una imagen liviana de producción exponiendo el puerto `3001`:
+
+```bash
+docker build -t hardwareguru-mcp-server:latest .
+```
+
+### Pipeline CI/CD (GitHub Actions)
+Definido en `.github/workflows/ci.yml`. En cada `push` o `pull_request` hacia `main`, `master` o `develop`, el pipeline configura Node.js 20, instala dependencias (`npm ci`), ejecuta `npm run test:coverage` en modo test, compila TypeScript (`npm run build`) y valida la construcción de la imagen Docker.
+
+---
+
+## 7. Estructura del Proyecto
+
+```text
+Taller2-Arquitectura-2-MCP Server/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                   # Pipeline CI/CD (tests + build + Docker)
 ├── src/
 │   ├── proto/
-│   │   └── simulator.proto    # Contrato gRPC compartido con el Repo 1
-│   └── index.ts               # Lógica principal del servidor, MCP y Gemini
-├── .env                       # Variables de entorno (Oculto en Git)
-├── .gitignore                 # Archivos ignorados por Git
-├── package.json               # Dependencias y scripts
-└── tsconfig.json              # Configuración de TypeScript
+│   │   ├── hardware.proto           # Contrato gRPC del Catálogo (Go :50051)
+│   │   └── simulator.proto          # Contrato gRPC del Simulador (Java :9090)
+│   └── index.ts                     # Servidor Express, clientes gRPC, 7 tools y bucle Gemini
+├── tests/
+│   └── index.test.ts                # Suite de tests (Vitest + Supertest)
+├── .dockerignore
+├── .env                             # Variables de entorno locales (ignorado en Git)
+├── .env.example                     # Plantilla de variables de entorno
+├── .gitignore                       # Archivos ignorados por Git (incluye coverage/ y .env)
+├── Dockerfile                       # Imagen multi-stage Node 20 Alpine
+├── package.json                     # Dependencias y scripts
+├── tsconfig.json                    # Configuración de TypeScript (ESM)
+└── README.md
+```
 
+---
+
+## 8. Checklist de Avance
+
+* [x] Inicializar servidor Express con TypeScript (ESM) y Google Generative AI SDK.
+* [x] Conectar clientes gRPC hacia Catálogo (`:50051`) y Simulador (`:9090`) + clientes REST (`:8081`).
+* [x] Implementar bucle agéntico con 7 herramientas reales y aislamiento de usuario por `x-user-id`.
+* [x] Externalizar `GEMINI_API_KEY` y `GEMINI_MODEL` mediante `.env` y `.env.example`.
+* [x] Implementar tests unitarios y de integración (Vitest + Supertest) superando el 60% de cobertura (92.72% statements / 94.11% líneas).
+* [x] Crear `Dockerfile` (multi-stage con copia de `.proto`) y `.dockerignore`.
+* [x] Configurar pipeline CI/CD (GitHub Actions).
